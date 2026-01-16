@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>Резьбовой помощник</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f5f5;
+      padding: 20px;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+    h1 { text-align: center; color: #2e7d32; margin: 20px 0; font-size: 22px; }
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      margin: 8px 0;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      text-align: center;
+      -webkit-appearance: none;
+    }
+    .btn:hover { background: #388E3C; }
+    input, select {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      -webkit-appearance: none;
+    }
+    #step2, #step3, #stepPitch, #stepGroup, #step1, #stepDiv, #stepMaterial, #stepType, #stepDirection, #stepInchSize { display: none; }
+    .result { 
+      background: white; 
+      padding: 15px; 
+      margin: 15px 0; 
+      border-radius: 8px; 
+      border-left: 4px solid #4CAF50;
+    }
+    .back { background: #999 !important; }
+    .pass-item {
+      background: white;
+      padding: 12px;
+      margin: 8px 0;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .pass-main {
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+    .pass-increment {
+      color: #555;
+      font-size: 14px;
+    }
+    .pass-check {
+      width: 40px;
+      height: 40px;
+      font-size: 20px;
+      background: #f1f1f1;
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      -webkit-appearance: none;
+      float: right;
+    }
+    .pass-check.done {
+      background: #e8f5e9;
+      color: #2e7d32;
+    }
+    .progress-bar {
+      text-align: center;
+      font-weight: bold;
+      color: #2e7d32;
+      margin: 10px 0;
+      font-size: 18px;
+    }
+    .group-title {
+      background: #e8f5e9;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 6px;
+      font-weight: bold;
+      text-align: center;
+    }
+    .info-note {
+      font-style: italic;
+      color: #555;
+      margin-top: 8px;
+      font-size: 14px;
+    }
+    .standard-step {
+      font-weight: bold;
+      color: #2e7d32;
+    }
+  </style>
+</head>
+<body>
+
+<h1>🔧 Резьбовой помощник<br><small>М3–М100 • UNC 1/4"–4"</small></h1>
+
+<!-- Шаг 0: Тип резьбы -->
+<div id="stepType">
+  <p><strong>Выберите тип резьбы:</strong></p>
+  <button class="btn" onclick="setThreadType('metric')">Метрическая</button>
+  <button class="btn" onclick="setThreadType('inch')">Дюймовая</button>
+</div>
+
+<!-- Шаг 0b: Направление -->
+<div id="stepDirection">
+  <p><strong>Выберите направление:</strong></p>
+  <button class="btn" onclick="setDirection('external')">Наружная</button>
+  <button class="btn" onclick="setDirection('internal')">Внутренняя</button>
+  <button class="btn back" onclick="backToType()">← Назад</button>
+</div>
+
+<!-- Шаг 1: Выбор группы (метрика) -->
+<div id="stepGroup">
+  <p><strong>Выберите группу резьб:</strong></p>
+  <button class="btn" onclick="selectGroup('small')">М3 – М20</button>
+  <button class="btn" onclick="selectGroup('medium')">М22 – М40</button>
+  <button class="btn" onclick="selectGroup('large')">М42 – М60</button>
+  <button class="btn" onclick="selectGroup('extra')">М62 – М100</button>
+  <button class="btn back" onclick="backToDirection()">← Назад</button>
+</div>
+
+<!-- Шаг 1b: Размер дюймовой резьбы -->
+<div id="stepInchSize">
+  <p><strong>Выберите размер:</strong></p>
+  <select id="inchSizeSelect" size="10"></select>
+  <button class="btn" onclick="selectInchSize()">Далее</button>
+  <button class="btn back" onclick="backToDirection()">← Назад</button>
+</div>
+
+<!-- Шаг 2: Выбор диаметра (метрика) -->
+<div id="step1">
+  <p><strong>Выберите резьбу:</strong></p>
+  <div id="diaList"></div>
+  <button class="btn back" onclick="backToGroup()">← Назад</button>
+</div>
+
+<!-- Шаг 3: Выбор шага -->
+<div id="stepPitch">
+  <p><strong>Шаг для <span id="pitchFor">М20</span>:</strong></p>
+  <select id="pitchSelect" size="5"></select>
+  <button class="btn" onclick="selectPitch()">Далее</button>
+  <button class="btn back" onclick="backToSize()">← Назад</button>
+</div>
+
+<!-- Шаг 4: Выбор цены деления (только для наружной) -->
+<div id="stepDiv">
+  <p><strong>Цена деления лимба (мм):</strong></p>
+  <button class="btn" onclick="setDivision(0.05)">0.05 мм</button>
+  <button class="btn" onclick="setDivision(0.02)">0.02 мм</button>
+  <button class="btn back" onclick="backToPitch()">← Назад</button>
+</div>
+
+<!-- Шаг 5: Выбор материала -->
+<div id="stepMaterial">
+  <p><strong>Материал заготовки:</strong></p>
+  <button class="btn" onclick="setMaterial('steel')">Сталь</button>
+  <button class="btn" onclick="setMaterial('cast_iron')">Чугун</button>
+  <button class="btn" onclick="setMaterial('aluminum')">Алюминий / Медь</button>
+  <button class="btn" onclick="setMaterial('stainless')">Нержавеющая сталь</button>
+  <button class="btn back" onclick="backToDivisionOrPitch()">← Назад</button>
+</div>
+
+<!-- Шаг 6: Ввод фактического диаметра -->
+<div id="step2">
+  <p><strong>Фактический Ø заготовки (мм):</strong></p>
+  <input type="number" step="0.01" id="actualDia" placeholder="Напр.: 12.70" />
+  <button class="btn" onclick="calculateResult()">Рассчитать</button>
+  <button class="btn back" onclick="backToMaterial()">← Назад</button>
+</div>
+
+<!-- Шаг 7: Результат -->
+<div id="step3">
+  <h2 id="resultTitle">Результат</h2>
+  
+  <div class="result" id="externalResult" style="display:none;">
+    <p><strong>🎯 Целевой Ø заготовки:</strong> <span id="targetDia">12.65</span> мм</p>
+    <p><strong>🔽 Обточить:</strong> <span id="toTurn">0.00</span> мм</p>
+    <p><strong>⚙️ Цена деления:</strong> <span id="usedDiv">0.05</span> мм</p>
+    <p class="info-note">ℹ️ Станок: <span id="machineInfo">1К62 (10 мм/оборот)</span></p>
+    <p class="info-note">🔄 Обороты: <span id="rpm">≈ 630 об/мин</span> (Сталь)</p>
+  </div>
+
+  <div class="result" id="internalResult" style="display:none;">
+    <p><strong>🎯 Сверлить до Ø:</strong> <span id="drillDia">11.30</span> мм</p>
+    <p><strong>ℹ️ Диаметр отверстия:</strong> <span id="holeDia">11.30</span> мм</p>
+    <p class="info-note">🔄 Обороты сверления: <span id="drillRpm">≈ 700 об/мин</span> (Сталь)</p>
+  </div>
+  
+  <div class="result" id="depthResult">
+    <p><strong>Глубина резьбы:</strong></p>
+    <p>Радиус: <span id="depthRad">0.825</span> мм</p>
+    <p>Диаметр: <span id="depthDiam">1.650</span> мм</p>
+    <p>Лимб: <span id="divisions">33</span> дел.</p>
+    <p><em>Теоретический d3/D1 = <span id="d3">10.050</span> мм</em></p>
+  </div>
+  
+  <div class="result" id="passesBlock">
+    <div class="progress-bar">✅ Выполнено: <span id="progressDone">0</span>/<span id="progressTotal">0</span></div>
+    <div id="passesList"></div>
+  </div>
+  
+  <button class="btn" onclick="resetAll()">Начать заново</button>
+</div>
+
+<script>
+// === МЕТРИЧЕСКАЯ БАЗА ===
+const THREAD_DB = {
+  3: [0.5], 3.5: [0.6], 4: [0.7], 5: [0.8], 6: [1.0], 7: [1.0],
+  8: [1.25, 1.0, 0.75], 9: [1.25, 1.0], 10: [1.5, 1.25, 1.0, 0.75],
+  11: [1.5, 1.0], 12: [1.75, 1.5, 1.25, 1.0], 14: [2.0, 1.5, 1.25, 1.0],
+  15: [2.0, 1.5], 16: [2.0, 1.5, 1.0], 17: [2.0, 1.5, 1.0],
+  18: [2.5, 2.0, 1.5, 1.25, 1.0], 20: [2.5, 2.0, 1.5, 1.0],
+  22: [2.5, 2.0, 1.5, 1.0], 24: [3.0, 2.0, 1.5, 1.0],
+  25: [3.0, 2.0, 1.5, 1.0], 26: [3.0, 2.0, 1.5],
+  27: [3.0, 2.0, 1.5, 1.0], 28: [3.0, 2.0, 1.5, 1.0],
+  30: [3.5, 3.0, 2.0, 1.5, 1.0], 32: [3.5, 3.0, 2.0, 1.5],
+  33: [3.5, 3.0, 2.0], 35: [3.5, 3.0, 2.0, 1.5],
+  36: [4.0, 3.0, 2.0, 1.5], 38: [4.0, 3.0, 2.0],
+  39: [4.0, 3.0, 2.0], 40: [4.0, 3.0, 2.0, 1.5],
+  42: [4.5, 4.0, 3.0, 2.0], 45: [4.5, 4.0, 3.0, 2.0],
+  48: [5.0, 4.0, 3.0, 2.0], 50: [5.0, 4.0, 3.0, 2.0],
+  52: [5.0, 4.0, 3.0], 55: [5.5, 4.0, 3.0],
+  56: [5.5, 4.0, 3.0], 58: [5.5, 4.0, 3.0],
+  60: [6.0, 4.0, 3.0], 62: [6.0, 4.0, 3.0],
+  64: [6.0, 4.0, 3.0], 65: [6.0, 4.0, 3.0],
+  68: [6.0, 4.0, 3.0], 70: [6.0, 4.0, 3.0],
+  72: [6.0, 4.0, 3.0], 75: [6.0, 4.0, 3.0],
+  76: [6.0, 4.0, 3.0], 80: [6.0, 4.0, 3.0],
+  85: [6.0, 4.0, 3.0], 90: [6.0, 4.0, 3.0],
+  95: [6.0, 4.0, 3.0], 100: [6.0, 4.0, 3.0]
+};
+
+// === ДЮЙМОВАЯ БАЗА (UNC от 1/4" до 4") ===
+const INCH_THREADS = {
+  '1/4"': { unc: 20 },
+  '5/16"': { unc: 18 },
+  '3/8"': { unc: 16 },
+  '7/16"': { unc: 14 },
+  '1/2"': { unc: 13 },
+  '9/16"': { unc: 12 },
+  '5/8"': { unc: 11 },
+  '3/4"': { unc: 10 },
+  '7/8"': { unc: 9 },
+  '1"': { unc: 8 },
+  '1 1/8"': { unc: 7 },
+  '1 1/4"': { unc: 7 },
+  '1 3/8"': { unc: 6 },
+  '1 1/2"': { unc: 6 },
+  '1 3/4"': { unc: 5 },
+  '2"': { unc: 4.5 },
+  '2 1/4"': { unc: 4.5 },
+  '2 1/2"': { unc: 4 },
+  '2 3/4"': { unc: 4 },
+  '3"': { unc: 4 },
+  '3 1/4"': { unc: 4 },
+  '3 1/2"': { unc: 4 },
+  '3 3/4"': { unc: 4 },
+  '4"': { unc: 4 }
+};
+
+const VC_TABLE = {
+  steel: 25,
+  cast_iron: 40,
+  aluminum: 80,
+  stainless: 15
+};
+
+let threadType = ""; // "metric", "inch"
+let direction = ""; // "external", "internal"
+let selectedGroup = "";
+let selectedDiameter = 0;
+let selectedPitch = 0;
+let selectedDivision = 0.05;
+let selectedMaterial = "steel";
+let currentPasses = [];
+let donePasses = [];
+let isMetric = true;
+
+const GROUPS = {
+  small: [3, 3.5, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 16, 17, 18, 20],
+  medium: [22, 24, 25, 26, 27, 28, 30, 32, 33, 35, 36, 38, 39, 40],
+  large: [42, 45, 48, 50, 52, 55, 56, 58, 60],
+  extra: [62, 64, 65, 68, 70, 72, 75, 76, 80, 85, 90, 95, 100]
+};
+
+// === ОСНОВНЫЕ ФУНКЦИИ ===
+function setThreadType(type) {
+  threadType = type;
+  isMetric = (type === 'metric');
+  document.getElementById("stepType").style.display = "none";
+  document.getElementById("stepDirection").style.display = "block";
+}
+
+function setDirection(dir) {
+  direction = dir;
+  if (isMetric) {
+    document.getElementById("stepDirection").style.display = "none";
+    document.getElementById("stepGroup").style.display = "block";
+  } else {
+    fillInchSizes();
+    document.getElementById("stepDirection").style.display = "none";
+    document.getElementById("stepInchSize").style.display = "block";
+  }
+}
+
+function fillInchSizes() {
+  const sel = document.getElementById("inchSizeSelect");
+  sel.innerHTML = "";
+  Object.keys(INCH_THREADS).forEach(size => {
+    const opt = document.createElement("option");
+    opt.value = size;
+    opt.textContent = size;
+    sel.appendChild(opt);
+  });
+}
+
+function selectInchSize() {
+  const size = document.getElementById("inchSizeSelect").value;
+  if (!size) return alert("Выберите размер!");
+  selectedDiameter = size;
+  showInchPitchStep();
+}
+
+function showInchPitchStep() {
+  const threads = INCH_THREADS[selectedDiameter];
+  const options = [];
+  if (threads.unc) options.push({type: 'unc', tpi: threads.unc});
+
+  const pitchSel = document.getElementById("pitchSelect");
+  pitchSel.innerHTML = "";
+  let hasStandard = false;
+
+  options.forEach(opt => {
+    const p_mm = (25.4 / opt.tpi).toFixed(3);
+    const label = `${opt.type.toUpperCase()} (${opt.tpi} TPI, ${p_mm} мм)`;
+    const optEl = document.createElement("option");
+    optEl.value = JSON.stringify({type: opt.type, tpi: opt.tpi, p_mm: parseFloat(p_mm)});
+    optEl.textContent = label;
+    if (!hasStandard) {
+      optEl.classList.add("standard-step");
+      hasStandard = true;
+    }
+    pitchSel.appendChild(optEl);
+  });
+
+  document.getElementById("pitchFor").textContent = selectedDiameter;
+  document.getElementById("stepInchSize").style.display = "none";
+  document.getElementById("stepPitch").style.display = "block";
+}
+
+function selectGroup(group) {
+  selectedGroup = group;
+  document.getElementById("stepGroup").style.display = "none";
+  document.getElementById("step1").style.display = "block";
+
+  const list = document.getElementById("diaList");
+  list.innerHTML = "";
+
+  const title = document.createElement("div");
+  title.className = "group-title";
+  title.textContent = getGroupName(group);
+  list.appendChild(title);
+
+  GROUPS[group].forEach(d => {
+    const btn = document.createElement("button");
+    btn.className = "btn";
+    btn.textContent = "М" + d;
+    btn.onclick = () => {
+      selectedDiameter = d;
+      showPitchStep();
+    };
+    list.appendChild(btn);
+  });
+}
+
+function getGroupName(group) {
+  switch(group) {
+    case "small": return "М3 – М20";
+    case "medium": return "М22 – М40";
+    case "large": return "М42 – М60";
+    case "extra": return "М62 – М100";
+    default: return "Группа";
+  }
+}
+
+function showPitchStep() {
+  const steps = THREAD_DB[selectedDiameter];
+  document.getElementById("pitchFor").textContent = "М" + selectedDiameter;
+  const pitchSel = document.getElementById("pitchSelect");
+  pitchSel.innerHTML = "";
+
+  const standard = steps[0];
+  steps.sort((a,b) => a - b).forEach(p => {
+    const opt = document.createElement("option");
+    opt.value = p;
+    let text = p + " мм";
+    if (p === standard) {
+      text += " (стандартный шаг)";
+      opt.classList.add("standard-step");
+    }
+    opt.textContent = text;
+    pitchSel.appendChild(opt);
+  });
+
+  document.getElementById("step1").style.display = "none";
+  document.getElementById("stepPitch").style.display = "block";
+}
+
+function selectPitch() {
+  const val = document.getElementById("pitchSelect").value;
+  if (!val) return alert("Выберите шаг!");
+
+  if (isMetric) {
+    selectedPitch = parseFloat(val);
+  } else {
+    const data = JSON.parse(val);
+    window.inchType = data.type;
+    selectedPitch = data.p_mm;
+  }
+
+  if (direction === "internal") {
+    showMaterialStep();
+  } else {
+    showDivisionStep();
+  }
+}
+
+function showDivisionStep() {
+  document.getElementById("stepPitch").style.display = "none";
+  document.getElementById("stepDiv").style.display = "block";
+}
+
+function setDivision(div) {
+  selectedDivision = div;
+  showMaterialStep();
+}
+
+function showMaterialStep() {
+  if (direction === "external") {
+    document.getElementById("stepDiv").style.display = "none";
+  } else {
+    document.getElementById("stepPitch").style.display = "none";
+  }
+  document.getElementById("stepMaterial").style.display = "block";
+}
+
+function setMaterial(material) {
+  selectedMaterial = material;
+  if (direction === "external") {
+    showActualDiameterStep();
+  } else {
+    calculateInternalResult();
+  }
+}
+
+function showActualDiameterStep() {
+  document.getElementById("stepMaterial").style.display = "none";
+  document.getElementById("step2").style.display = "block";
+  document.getElementById("actualDia").focus();
+}
+
+// === РАСЧЁТЫ ===
+function calculateResult() {
+  const actual = parseFloat(document.getElementById("actualDia").value);
+  if (isNaN(actual)) return alert("Введите число!");
+
+  let targetBlank, h, depthDiam, divisions, nominal_mm;
+
+  if (isMetric) {
+    nominal_mm = selectedDiameter;
+    if (selectedDiameter <= 10) targetBlank = selectedDiameter - 0.04;
+    else if (selectedDiameter <= 30) targetBlank = selectedDiameter - 0.05;
+    else if (selectedDiameter <= 50) targetBlank = selectedDiameter - 0.06;
+    else if (selectedDiameter <= 80) targetBlank = selectedDiameter - 0.07;
+    else targetBlank = selectedDiameter - 0.08;
+    targetBlank = parseFloat(targetBlank.toFixed(2));
+
+    h = 0.61343 * selectedPitch;
+  } else {
+    nominal_mm = parseFloat(selectedDiameter) * 25.4;
+    targetBlank = nominal_mm - 0.05;
+    targetBlank = parseFloat(targetBlank.toFixed(2));
+
+    const factor = window.inchType === 'bsw' ? 0.6403 : 0.6495;
+    h = factor * selectedPitch;
+  }
+
+  depthDiam = 2 * h;
+  divisions = Math.round(depthDiam / selectedDivision);
+  currentPasses = generatePasses(divisions, selectedDivision);
+  donePasses = new Array(currentPasses.length).fill(false);
+
+  const toTurn = Math.max(parseFloat((actual - targetBlank).toFixed(2)), 0);
+  const Vc = VC_TABLE[selectedMaterial];
+  const rpm = Math.round((1000 * Vc) / (Math.PI * actual));
+  const materialNames = {
+    steel: "Сталь",
+    cast_iron: "Чугун",
+    aluminum: "Алюминий",
+    stainless: "Нержавейка"
+  };
+
+  let title = "";
+  if (isMetric) {
+    title = `Результат для М${selectedDiameter}×${selectedPitch}`;
+  } else {
+    const tpi = (25.4 / selectedPitch).toFixed(0);
+    title = `Результат для ${selectedDiameter} ${window.inchType.toUpperCase()} (${tpi} TPI)`;
+  }
+
+  document.getElementById("resultTitle").textContent = title;
+  document.getElementById("targetDia").textContent = targetBlank;
+  document.getElementById("toTurn").textContent = toTurn;
+  document.getElementById("usedDiv").textContent = selectedDivision;
+
+  if (isMetric) {
+    const machineInfo = selectedDivision === 0.05 
+      ? "1К62 (10 мм/оборот)" 
+      : "16У04П (4 мм/оборот)";
+    document.getElementById("machineInfo").textContent = machineInfo;
+  } else {
+    const machineInfo = selectedDivision === 0.05 
+      ? "Станок: 0.05 мм/дел" 
+      : "Станок: 0.02 мм/дел";
+    document.getElementById("machineInfo").textContent = machineInfo;
+  }
+  document.getElementById("rpm").textContent = `≈ ${rpm} об/мин (${materialNames[selectedMaterial]})`;
+
+  document.getElementById("depthRad").textContent = h.toFixed(3);
+  document.getElementById("depthDiam").textContent = depthDiam.toFixed(3);
+  document.getElementById("divisions").textContent = divisions;
+  document.getElementById("d3").textContent = (nominal_mm - depthDiam).toFixed(3);
+
+  document.getElementById("externalResult").style.display = "block";
+  document.getElementById("internalResult").style.display = "none";
+  document.getElementById("passesBlock").style.display = "block";
+
+  renderPasses();
+
+  document.getElementById("step2").style.display = "none";
+  document.getElementById("step3").style.display = "block";
+}
+
+function calculateInternalResult() {
+  let holeDia, drillDia, nominal_mm;
+
+  if (isMetric) {
+    holeDia = (selectedDiameter - selectedPitch).toFixed(2);
+    drillDia = holeDia;
+    nominal_mm = selectedDiameter;
+  } else {
+    nominal_mm = parseFloat(selectedDiameter) * 25.4;
+    holeDia = (nominal_mm - selectedPitch).toFixed(2);
+    drillDia = holeDia;
+  }
+
+  const VcDrill = VC_TABLE[selectedMaterial] * 0.8;
+  const drillRpm = Math.round((1000 * VcDrill) / (Math.PI * drillDia));
+
+  const materialNames = {
+    steel: "Сталь",
+    cast_iron: "Чугун",
+    aluminum: "Алюминий",
+    stainless: "Нержавейка"
+  };
+
+  let title = "";
+  if (isMetric) {
+    title = `Результат для М${selectedDiameter}×${selectedPitch} (внутр.)`;
+  } else {
+    const tpi = (25.4 / selectedPitch).toFixed(0);
+    title = `Результат для ${selectedDiameter} ${window.inchType.toUpperCase()} (${tpi} TPI, внутр.)`;
+  }
+
+  document.getElementById("resultTitle").textContent = title;
+  document.getElementById("drillDia").textContent = drillDia;
+  document.getElementById("holeDia").textContent = holeDia;
+  document.getElementById("drillRpm").textContent = `≈ ${drillRpm} об/мин (${materialNames[selectedMaterial]})`;
+
+  const factor = (!isMetric && window.inchType === 'bsw') ? 0.6403 : 0.6495;
+  const h = factor * selectedPitch;
+  const depthDiam = 2 * h;
+  document.getElementById("depthRad").textContent = h.toFixed(3);
+  document.getElementById("depthDiam").textContent = depthDiam.toFixed(3);
+  document.getElementById("d3").textContent = (nominal_mm - depthDiam).toFixed(3);
+
+  document.getElementById("externalResult").style.display = "none";
+  document.getElementById("internalResult").style.display = "block";
+  document.getElementById("passesBlock").style.display = "none";
+
+  document.getElementById("stepMaterial").style.display = "none";
+  document.getElementById("step3").style.display = "block";
+}
+
+// === ГЕНЕРАЦИЯ ПРОХОДОВ С ОГРАНИЧЕНИЕМ ===
+function generatePasses(totalDiv, division) {
+  const maxDepthPerPass = 0.30; // мм
+  const maxDivPerPass = Math.floor(maxDepthPerPass / division);
+
+  if (division >= 0.05) {
+    if (totalDiv <= 1) return [totalDiv];
+    if (totalDiv <= 10) return [Math.min(Math.ceil(totalDiv * 0.7), totalDiv - 1), totalDiv];
+    if (totalDiv <= 20) return [Math.ceil(totalDiv * 0.6), totalDiv];
+    if (totalDiv <= 30) return [Math.ceil(totalDiv * 0.5), Math.ceil(totalDiv * 0.8), totalDiv];
+    if (totalDiv <= 50) {
+      const p1 = Math.ceil(totalDiv * 0.43);
+      const p2 = Math.ceil(totalDiv * 0.76);
+      const p3 = Math.ceil(totalDiv * 0.97);
+      return [
+        Math.min(p1, totalDiv - 1),
+        Math.min(p2, totalDiv - 1),
+        Math.min(p3, totalDiv - 1),
+        totalDiv
+      ].filter((x, i, arr) => arr.indexOf(x) === i);
+    }
+    const ratios = [0.45, 0.70, 0.85, 0.93, 0.97, 0.99];
+    const passes = ratios.map(r => Math.min(Math.ceil(totalDiv * r), totalDiv - 1));
+    const unique = [...new Set(passes)].sort((a, b) => a - b);
+    return [...unique, totalDiv];
+  }
+
+  // Для 0.02 мм — строгий контроль по 0.3 мм/проход
+  const passes = [];
+  let current = 0;
+  while (current < totalDiv) {
+    const next = Math.min(current + maxDivPerPass, totalDiv);
+    passes.push(next);
+    current = next;
+  }
+  return passes;
+}
+
+function renderPasses() {
+  const list = document.getElementById("passesList");
+  const total = currentPasses.length;
+  document.getElementById("progressTotal").textContent = total;
+  document.getElementById("progressDone").textContent = donePasses.filter(Boolean).length;
+
+  let html = '';
+  let prev = 0;
+  currentPasses.forEach((p, i) => {
+    const mmTotal = (p * selectedDivision).toFixed(2);
+    const deltaDiv = p - prev;
+    const deltaMm = (deltaDiv * selectedDivision).toFixed(2);
+    const isDone = donePasses[i];
+
+    html += `
+      <div class="pass-item">
+        <div class="pass-main">Проход ${i+1}: ${p} дел → ${mmTotal} мм ⌀</div>
+        <div class="pass-increment">+${deltaDiv} дел → +${deltaMm} мм</div>
+        <button class="pass-check ${isDone ? 'done' : ''}" 
+                onclick="togglePass(${i})">
+          ${isDone ? '✅' : '⬜'}
+        </button>
+      </div>
+    `;
+    prev = p;
+  });
+  list.innerHTML = html;
+}
+
+function togglePass(index) {
+  donePasses[index] = !donePasses[index];
+  renderPasses();
+}
+
+function resetAll() {
+  document.getElementById("step3").style.display = "none";
+  document.getElementById("step2").style.display = "none";
+  document.getElementById("stepMaterial").style.display = "none";
+  document.getElementById("stepDiv").style.display = "none";
+  document.getElementById("stepPitch").style.display = "none";
+  document.getElementById("step1").style.display = "none";
+  document.getElementById("stepGroup").style.display = "none";
+  document.getElementById("stepInchSize").style.display = "none";
+  document.getElementById("stepDirection").style.display = "none";
+  document.getElementById("stepType").style.display = "block";
+  document.getElementById("actualDia").value = "";
+  selectedDivision = 0.05;
+  selectedMaterial = "steel";
+  isMetric = true;
+}
+
+// Навигация назад
+function backToType() {
+  document.getElementById("stepDirection").style.display = "none";
+  document.getElementById("stepType").style.display = "block";
+}
+function backToDirection() {
+  if (isMetric) {
+    document.getElementById("stepGroup").style.display = "none";
+  } else {
+    document.getElementById("stepInchSize").style.display = "none";
+  }
+  document.getElementById("stepDirection").style.display = "block";
+}
+function backToGroup() {
+  document.getElementById("step1").style.display = "none";
+  document.getElementById("stepGroup").style.display = "block";
+}
+function backToSize() {
+  if (isMetric) {
+    document.getElementById("stepPitch").style.display = "none";
+    document.getElementById("step1").style.display = "block";
+  } else {
+    document.getElementById("stepPitch").style.display = "none";
+    document.getElementById("stepInchSize").style.display = "block";
+  }
+}
+function backToPitch() {
+  document.getElementById("stepDiv").style.display = "none";
+  document.getElementById("stepPitch").style.display = "block";
+}
+function backToDivisionOrPitch() {
+  if (direction === "external") {
+    document.getElementById("stepMaterial").style.display = "none";
+    document.getElementById("stepDiv").style.display = "block";
+  } else {
+    document.getElementById("stepMaterial").style.display = "none";
+    document.getElementById("stepPitch").style.display = "block";
+  }
+}
+function backToMaterial() {
+  document.getElementById("step2").style.display = "none";
+  document.getElementById("stepMaterial").style.display = "block";
+}
+
+window.onload = function() {
+  document.getElementById("stepType").style.display = "block";
+};
+</script>
+
+</body>
+</html>
