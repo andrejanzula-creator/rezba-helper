@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>Токарный помощник</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f5f5;
+      padding: 20px;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+    h1 { text-align: center; color: #2e7d32; margin: 25px 0; font-size: 26px; }
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      margin: 8px 0;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      text-align: center;
+      -webkit-appearance: none;
+    }
+    .btn:hover { background: #388E3C; }
+    input, select {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      -webkit-appearance: none;
+    }
+    .result { 
+      background: white; 
+      padding: 15px; 
+      margin: 15px 0; 
+      border-radius: 8px; 
+      border-left: 4px solid #4CAF50;
+    }
+    .back { background: #999 !important; }
+    .pass-item {
+      background: white;
+      padding: 12px;
+      margin: 8px 0;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .pass-main {
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+    .pass-increment {
+      color: #555;
+      font-size: 14px;
+    }
+    .pass-check {
+      width: 40px;
+      height: 40px;
+      font-size: 20px;
+      background: #f1f1f1;
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      -webkit-appearance: none;
+      float: right;
+    }
+    .pass-check.done {
+      background: #e8f5e9;
+      color: #2e7d32;
+    }
+    .progress-bar {
+      text-align: center;
+      font-weight: bold;
+      color: #2e7d32;
+      margin: 10px 0;
+      font-size: 18px;
+    }
+    .group-title {
+      background: #e8f5e9;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 6px;
+      font-weight: bold;
+      text-align: center;
+    }
+    .info-note {
+      font-style: italic;
+      color: #555;
+      margin-top: 8px;
+      font-size: 14px;
+    }
+    .standard-step {
+      font-weight: bold;
+      color: #2e7d32;
+    }
+    
+    /* Все шаги скрыты по умолчанию */
+    [id^="step"] { display: none; }
+  </style>
+</head>
+<body>
+
+<h1>🔧 Токарный помощник</h1>
+
+<!-- Шаг 0: Выбор операции -->
+<div id="stepOperation">
+  <p><strong>Выберите операцию:</strong></p>
+  <button class="btn" onclick="setOperation('threading')">Нарезка резьбы</button>
+  <button class="btn" onclick="setOperation('cutting')">Отрезание</button>
+  <button class="btn" onclick="setOperation('turning')">Точение</button>
+  <button class="btn" onclick="setOperation('drilling')">Сверление</button>
+  <button class="btn" onclick="setOperation('chamfer')">Фаски</button>
+  
+  <div style="margin-top: 30px; font-size: 16px; color: #2e7d32; text-align: center; font-weight: bold;">
+    Поддержите автора: <a href="https://www.youtube.com/@ПослушныйМеталл" target="_blank" style="color: #2e7d32; text-decoration: none;">📺 Послушный Металл</a>
+  </div>
+</div>
+
+<!-- === НАРЕЗКА РЕЗЬБЫ === -->
+<div id="stepThreadType">
+  <p><strong>Тип резьбы:</strong></p>
+  <button class="btn" onclick="setThreadType('external')">Наружная</button>
+  <button class="btn" onclick="setThreadType('internal')">Внутренняя</button>
+  <button class="btn back" onclick="backToOperation()">← Назад</button>
+</div>
+
+<div id="stepGroup">
+  <p><strong>Группа резьб:</strong></p>
+  <button class="btn" onclick="selectGroup('small')">М3 – М20</button>
+  <button class="btn" onclick="selectGroup('medium')">М22 – М40</button>
+  <button class="btn" onclick="selectGroup('large')">М42 – М60</button>
+  <button class="btn" onclick="selectGroup('extra')">М62 – М100</button>
+  <button class="btn back" onclick="backToThreadType()">← Назад</button>
+</div>
+
+<div id="step1">
+  <p><strong>Выберите резьбу:</strong></p>
+  <div id="diaList"></div>
+  <button class="btn back" onclick="backToGroup()">← Назад</button>
+</div>
+
+<div id="stepPitch">
+  <p><strong>Шаг для <span id="pitchFor">М20</span>:</strong></p>
+  <select id="pitchSelect" size="5"></select>
+  <button class="btn" onclick="selectPitch()">Далее</button>
+  <button class="btn back" onclick="backToDiameter()">← Назад</button>
+</div>
+
+<div id="stepDiv">
+  <p><strong>Цена деления лимба (мм):</strong></p>
+  <button class="btn" onclick="setDivision(0.05)">0.05 мм</button>
+  <button class="btn" onclick="setDivision(0.02)">0.02 мм</button>
+  <button class="btn" onclick="setDivision(0.025)">0.025 мм</button>
+  <button class="btn" onclick="setDivision(0.01)">0.01 мм</button>
+  <button class="btn back" onclick="backToPitch()">← Назад</button>
+</div>
+
+<div id="stepMaterial">
+  <p><strong>Материал заготовки:</strong></p>
+  <button class="btn" onclick="setMaterial('steel')">Сталь</button>
+  <button class="btn" onclick="setMaterial('cast_iron')">Чугун</button>
+  <button class="btn" onclick="setMaterial('aluminum')">Алюминий / Медь</button>
+  <button class="btn" onclick="setMaterial('stainless')">Нержавеющая сталь</button>
+  <button class="btn back" onclick="backToDivisionOrPitch()">← Назад</button>
+</div>
+
+<div id="step2">
+  <p><strong>Фактический Ø заготовки (мм):</strong></p>
+  <input type="number" step="0.01" id="actualDia" placeholder="Напр.: 19.90" />
+  <button class="btn" onclick="calculateResult()">Рассчитать</button>
+  <button class="btn back" onclick="backToMaterial()">← Назад</button>
+</div>
+
+<!-- === ОТРЕЗАНИЕ === -->
+<div id="stepCuttingMaterial">
+  <p><strong>Материал заготовки:</strong></p>
+  <button class="btn" onclick="setCuttingMaterial('steel')">Сталь</button>
+  <button class="btn" onclick="setCuttingMaterial('cast_iron')">Чугун</button>
+  <button class="btn" onclick="setCuttingMaterial('aluminum')">Алюминий / Медь</button>
+  <button class="btn" onclick="setCuttingMaterial('stainless')">Нержавеющая сталь</button>
+  <button class="btn back" onclick="backToOperation()">← Назад</button>
+</div>
+
+<div id="stepCuttingTool">
+  <p><strong>Тип отрезного резца:</strong></p>
+  <button class="btn" onclick="setCuttingTool('carbide')">Твердосплавный</button>
+  <button class="btn" onclick="setCuttingTool('hss')">Быстрорежущий (HSS)</button>
+  <button class="btn back" onclick="backToCuttingMaterial()">← Назад</button>
+</div>
+
+<div id="stepCuttingDiameter">
+  <p><strong>Диаметр заготовки (мм):</strong></p>
+  <input type="number" step="0.1" id="cuttingDiameter" placeholder="Напр.: 40" />
+  <button class="btn" onclick="calculateCutting()">Рассчитать</button>
+  <button class="btn back" onclick="backToCuttingTool()">← Назад</button>
+</div>
+
+<!-- === ТОЧЕНИЕ === -->
+<div id="stepTurningType">
+  <p><strong>Тип точения:</strong></p>
+  <button class="btn" onclick="setTurningType('external')">Внешнее</button>
+  <button class="btn" onclick="setTurningType('internal')">Внутреннее</button>
+  <button class="btn back" onclick="backToOperation()">← Назад</button>
+</div>
+
+<div id="stepTurningMaterial">
+  <p><strong>Материал заготовки:</strong></p>
+  <button class="btn" onclick="setTurningMaterial('steel')">Сталь</button>
+  <button class="btn" onclick="setTurningMaterial('cast_iron')">Чугун</button>
+  <button class="btn" onclick="setTurningMaterial('aluminum')">Алюминий / Медь</button>
+  <button class="btn" onclick="setTurningMaterial('stainless')">Нержавеющая сталь</button>
+  <button class="btn back" onclick="backToTurningType()">← Назад</button>
+</div>
+
+<div id="stepTurningDiameters">
+  <p><strong>Начальный Ø (мм):</strong></p>
+  <input type="number" step="0.01" id="turningStartDia" placeholder="Напр.: 50.00" />
+  <p><strong>Конечный Ø (мм):</strong></p>
+  <input type="number" step="0.01" id="turningEndDia" placeholder="Напр.: 45.00" />
+  <p><strong>Длина участка (мм):</strong></p>
+  <input type="number" step="0.1" id="turningLength" placeholder="Напр.: 30" />
+  <button class="btn" onclick="calculateTurning()">Рассчитать</button>
+  <button class="btn back" onclick="backToTurningMaterial()">← Назад</button>
+</div>
+
+<!-- === СВЕРЛЕНИЕ === -->
+<div id="stepDrillingMaterial">
+  <p><strong>Материал заготовки:</strong></p>
+  <button class="btn" onclick="setDrillingMaterial('steel')">Сталь</button>
+  <button class="btn" onclick="setDrillingMaterial('cast_iron')">Чугун</button>
+  <button class="btn" onclick="setDrillingMaterial('aluminum')">Алюминий / Медь</button>
+  <button class="btn" onclick="setDrillingMaterial('stainless')">Нержавеющая сталь</button>
+  <button class="btn back" onclick="backToOperation()">← Назад</button>
+</div>
+
+<div id="stepDrillingDiameter">
+  <p><strong>Диаметр сверла (мм):</strong></p>
+  <input type="number" step="0.1" id="drillDiameter" placeholder="Напр.: 10.0" />
+  <button class="btn" onclick="calculateDrilling()">Рассчитать</button>
+  <button class="btn back" onclick="backToDrillingMaterial()">← Назад</button>
+</div>
+
+<!-- === ФАСКИ === -->
+<div id="stepChamferType">
+  <p><strong>Тип фаски:</strong></p>
+  <button class="btn" onclick="setChamferType('45')">45° (стандартная)</button>
+  <button class="btn" onclick="setChamferType('60')">60°</button>
+  <button class="btn" onclick="setChamferType('30')">30°</button>
+  <button class="btn back" onclick="backToOperation()">← Назад</button>
+</div>
+
+<div id="stepChamferDiameter">
+  <p><strong>Диаметр заготовки (мм):</strong></p>
+  <input type="number" step="0.01" id="chamferDiameter" placeholder="Напр.: 20.00" />
+  <button class="btn" onclick="calculateChamfer()">Рассчитать</button>
+  <button class="btn back" onclick="backToChamferType()">← Назад</button>
+</div>
+
+<!-- === РЕЗУЛЬТАТЫ === -->
+<div id="stepResult">
+  <h2 id="resultTitle">Результат</h2>
+  <div id="resultContent" class="result"></div>
+  <button class="btn" onclick="resetAll()">Начать заново</button>
+</div>
+
+<script>
+// === БАЗЫ ===
+const THREAD_DB = {
+  3: [0.5], 3.5: [0.6], 4: [0.7], 5: [0.8], 6: [1.0], 7: [1.0],
+  8: [1.25, 1.0, 0.75], 9: [1.25, 1.0], 10: [1.5, 1.25, 1.0, 0.75],
+  11: [1.5, 1.0], 12: [1.75, 1.5, 1.25, 1.0],
+  13: [2.0, 1.5, 1.0, 0.75],
+  14: [2.0, 1.5, 1.25, 1.0],
+  15: [2.0, 1.5, 1.0, 0.75],
+  16: [2.0, 1.5, 1.0], 17: [2.0, 1.5, 1.0],
+  18: [2.5, 2.0, 1.5, 1.25, 1.0], 20: [2.5, 2.0, 1.5, 1.0],
+  22: [2.5, 2.0, 1.5, 1.0], 24: [3.0, 2.0, 1.5, 1.0],
+  25: [3.0, 2.0, 1.5, 1.0], 26: [3.0, 2.0, 1.5],
+  27: [3.0, 2.0, 1.5, 1.0], 28: [3.0, 2.0, 1.5, 1.0],
+  30: [3.5, 3.0, 2.0, 1.5, 1.0], 32: [3.5, 3.0, 2.0, 1.5],
+  33: [3.5, 3.0, 2.0], 35: [3.5, 3.0, 2.0, 1.5],
+  36: [4.0, 3.0, 2.0, 1.5], 38: [4.0, 3.0, 2.0],
+  39: [4.0, 3.0, 2.0], 40: [4.0, 3.0, 2.0, 1.5],
+  42: [4.5, 4.0, 3.0, 2.0], 45: [4.5, 4.0, 3.0, 2.0],
+  48: [5.0, 4.0, 3.0, 2.0], 50: [5.0, 4.0, 3.0, 2.0],
+  52: [5.0, 4.0, 3.0], 55: [5.5, 4.0, 3.0],
+  56: [5.5, 4.0, 3.0], 58: [5.5, 4.0, 3.0],
+  60: [6.0, 4.0, 3.0], 62: [6.0, 4.0, 3.0],
+  64: [6.0, 4.0, 3.0], 65: [6.0, 4.0, 3.0],
+  68: [6.0, 4.0, 3.0], 70: [6.0, 4.0, 3.0],
+  72: [6.0, 4.0, 3.0], 75: [6.0, 4.0, 3.0],
+  76: [6.0, 4.0, 3.0], 80: [6.0, 4.0, 3.0],
+  85: [6.0, 4.0, 3.0], 90: [6.0, 4.0, 3.0],
+  95: [6.0, 4.0, 3.0], 100: [6.0, 4.0, 3.0]
+};
+
+const CUTTING_DATA = {
+  steel: { carbide: { vc: 150, feed: 0.10 }, hss: { vc: 30, feed: 0.05 } },
+  cast_iron: { carbide: { vc: 125, feed: 0.15 }, hss: { vc: 25, feed: 0.04 } },
+  aluminum: { carbide: { vc: 400, feed: 0.20 }, hss: { vc: 60, feed: 0.08 } },
+  stainless: { carbide: { vc: 80, feed: 0.08 }, hss: { vc: 15, feed: 0.03 } }
+};
+
+const TURNING_DATA = {
+  steel: { vc: 120, feed: 0.2 },
+  cast_iron: { vc: 100, feed: 0.25 },
+  aluminum: { vc: 300, feed: 0.3 },
+  stainless: { vc: 60, feed: 0.1 }
+};
+
+const DRILLING_DATA = {
+  steel: { vc: 25, feed: 0.1 },
+  cast_iron: { vc: 30, feed: 0.12 },
+  aluminum: { vc: 80, feed: 0.2 },
+  stainless: { vc: 15, feed: 0.05 }
+};
+
+const VC_TABLE = {
+  steel: 25,
+  cast_iron: 40,
+  aluminum: 80,
+  stainless: 15
+};
+
+// === ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ===
+let currentOperation = "";
+let threadType = "";
+let selectedGroup = "";
+let selectedDiameter = 0;
+let selectedPitch = 0;
+let selectedDivision = 0.05;
+let selectedMaterial = "steel";
+let cuttingMaterial = "steel";
+let cuttingTool = "carbide";
+let turningType = "external";
+let turningMaterial = "steel";
+let drillingMaterial = "steel";
+let chamferType = "45";
+
+const GROUPS = {
+  small: [3, 3.5, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 20],
+  medium: [22, 24, 25, 26, 27, 28, 30, 32, 33, 35, 36, 38, 39, 40],
+  large: [42, 45, 48, 50, 52, 55, 56, 58, 60],
+  extra: [62, 64, 65, 68, 70, 72, 75, 76, 80, 85, 90, 95, 100]
+};
+
+// === ОСНОВНЫЕ ФУНКЦИИ ===
+function setOperation(op) {
+  currentOperation = op;
+  hideAllSteps();
+  if (op === 'threading') {
+    document.getElementById("stepThreadType").style.display = "block";
+  } else if (op === 'cutting') {
+    document.getElementById("stepCuttingMaterial").style.display = "block";
+  } else if (op === 'turning') {
+    document.getElementById("stepTurningType").style.display = "block";
+  } else if (op === 'drilling') {
+    document.getElementById("stepDrillingMaterial").style.display = "block";
+  } else if (op === 'chamfer') {
+    document.getElementById("stepChamferType").style.display = "block";
+  }
+}
+
+function hideAllSteps() {
+  const steps = document.querySelectorAll('[id^="step"]');
+  steps.forEach(step => step.style.display = "none");
+}
+
+// === НАРЕЗКА РЕЗЬБЫ ===
+function setThreadType(type) {
+  threadType = type;
+  hideAllSteps();
+  document.getElementById("stepGroup").style.display = "block";
+}
+
+function selectGroup(group) {
+  selectedGroup = group;
+  hideAllSteps();
+  const list = document.getElementById("diaList");
+  list.innerHTML = "";
+
+  const title = document.createElement("div");
+  title.className = "group-title";
+  title.textContent = getGroupName(group);
+  list.appendChild(title);
+
+  GROUPS[group].forEach(d => {
+    const btn = document.createElement("button");
+    btn.className = "btn";
+    btn.textContent = "М" + d;
+    btn.onclick = () => {
+      selectedDiameter = d;
+      showPitchStep();
+    };
+    list.appendChild(btn);
+  });
+  document.getElementById("step1").style.display = "block";
+}
+
+function getGroupName(group) {
+  switch(group) {
+    case "small": return "М3 – М20";
+    case "medium": return "М22 – М40";
+    case "large": return "М42 – М60";
+    case "extra": return "М62 – М100";
+    default: return "Группа";
+  }
+}
+
+function showPitchStep() {
+  const steps = THREAD_DB[selectedDiameter];
+  document.getElementById("pitchFor").textContent = "М" + selectedDiameter;
+  const pitchSel = document.getElementById("pitchSelect");
+  pitchSel.innerHTML = "";
+
+  const standard = steps[0];
+  steps.sort((a,b) => a - b).forEach(p => {
+    const opt = document.createElement("option");
+    opt.value = p;
+    let text = p + " мм";
+    if (p === standard) {
+      text += " (стандартный шаг)";
+      opt.classList.add("standard-step");
+    }
+    opt.textContent = text;
+    pitchSel.appendChild(opt);
+  });
+
+  hideAllSteps();
+  document.getElementById("stepPitch").style.display = "block";
+}
+
+function selectPitch() {
+  const val = document.getElementById("pitchSelect").value;
+  if (!val) return alert("Выберите шаг!");
+  selectedPitch = parseFloat(val);
+
+  if (threadType === "internal") {
+    hideAllSteps();
+    document.getElementById("stepMaterial").style.display = "block";
+  } else {
+    hideAllSteps();
+    document.getElementById("stepDiv").style.display = "block";
+  }
+}
+
+function setDivision(div) {
+  selectedDivision = div;
+  hideAllSteps();
+  document.getElementById("stepMaterial").style.display = "block";
+}
+
+function setMaterial(material) {
+  selectedMaterial = material;
+  if (threadType === "external") {
+    hideAllSteps();
+    document.getElementById("step2").style.display = "block";
+  } else {
+    calculateInternalResult();
+  }
+}
+
+function showActualDiameterStep() {
+  hideAllSteps();
+  document.getElementById("step2").style.display = "block";
+  document.getElementById("actualDia").focus();
+}
+
+function calculateResult() {
+  const actual = parseFloat(document.getElementById("actualDia").value);
+  if (isNaN(actual)) return alert("Введите число!");
+
+  let targetBlank;
+  if (selectedDiameter <= 10) targetBlank = selectedDiameter - 0.04;
+  else if (selectedDiameter <= 30) targetBlank = selectedDiameter - 0.05;
+  else if (selectedDiameter <= 50) targetBlank = selectedDiameter - 0.06;
+  else if (selectedDiameter <= 80) targetBlank = selectedDiameter - 0.07;
+  else targetBlank = selectedDiameter - 0.08;
+  targetBlank = parseFloat(targetBlank.toFixed(2));
+
+  const toTurn = Math.max(parseFloat((actual - targetBlank).toFixed(2)), 0);
+  const h = 0.61343 * selectedPitch;
+  const depthDiam = 2 * h;
+  const divisions = Math.round(depthDiam / selectedDivision);
+
+  const Vc = VC_TABLE[selectedMaterial];
+  const rpm = Math.round((1000 * Vc) / (Math.PI * actual));
+  const materialNames = { steel: "Сталь", cast_iron: "Чугун", aluminum: "Алюминий", stainless: "Нержавейка" };
+
+  let html = `
+    <p><strong>🎯 Целевой Ø заготовки:</strong> ${targetBlank} мм</p>
+    <p><strong>🔽 Обточить:</strong> ${toTurn} мм</p>
+    <p><strong>⚙️ Цена деления:</strong> ${selectedDivision} мм</p>
+    <p class="info-note">🔄 Обороты: ≈ ${rpm} об/мин (${materialNames[selectedMaterial]})</p>
+    <p><strong>Глубина резьбы:</strong></p>
+    <p>Радиус: ${h.toFixed(3)} мм</p>
+    <p>Диаметр: ${depthDiam.toFixed(3)} мм</p>
+    <p>Лимб: ${divisions} дел.</p>
+  `;
+  document.getElementById("resultTitle").textContent = `Результат для М${selectedDiameter}×${selectedPitch}`;
+  document.getElementById("resultContent").innerHTML = html;
+  hideAllSteps();
+  document.getElementById("stepResult").style.display = "block";
+}
+
+function calculateInternalResult() {
+  const holeDia = (selectedDiameter - selectedPitch).toFixed(2);
+  const drillDia = holeDia;
+
+  const VcDrill = VC_TABLE[selectedMaterial] * 0.8;
+  const drillRpm = Math.round((1000 * VcDrill) / (Math.PI * drillDia));
+  const materialNames = { steel: "Сталь", cast_iron: "Чугун", aluminum: "Алюминий", stainless: "Нержавейка" };
+
+  let html = `
+    <p><strong>🎯 Сверлить до Ø:</strong> ${drillDia} мм</p>
+    <p class="info-note">🔄 Обороты сверления: ≈ ${drillRpm} об/мин (${materialNames[selectedMaterial]})</p>
+    <p><strong>Глубина резьбы:</strong></p>
+    <p>Радиус: ${(0.61343 * selectedPitch).toFixed(3)} мм</p>
+    <p>Диаметр: ${(2 * 0.61343 * selectedPitch).toFixed(3)} мм</p>
+  `;
+  document.getElementById("resultTitle").textContent = `Результат для М${selectedDiameter}×${selectedPitch} (внутр.)`;
+  document.getElementById("resultContent").innerHTML = html;
+  hideAllSteps();
+  document.getElementById("stepResult").style.display = "block";
+}
+
+// === ОТРЕЗАНИЕ ===
+function setCuttingMaterial(mat) {
+  cuttingMaterial = mat;
+  hideAllSteps();
+  document.getElementById("stepCuttingTool").style.display = "block";
+}
+
+function setCuttingTool(tool) {
+  cuttingTool = tool;
+  hideAllSteps();
+  document.getElementById("stepCuttingDiameter").style.display = "block";
+}
+
+function calculateCutting() {
+  const dia = parseFloat(document.getElementById("cuttingDiameter").value);
+  if (isNaN(dia) || dia <= 0) return alert("Введите корректный диаметр!");
+
+  const data = CUTTING_DATA[cuttingMaterial][cuttingTool];
+  const vc = data.vc;
+  const feed = data.feed;
+  const rpm = Math.round((1000 * vc) / (Math.PI * dia));
+
+  const materialNames = { steel: "Сталь", cast_iron: "Чугун", aluminum: "Алюминий", stainless: "Нержавейка" };
+  const toolNames = { carbide: "Твердосплавный", hss: "Быстрорежущий (HSS)" };
+
+  let html = `
+    <p><strong>🎯 Материал:</strong> ${materialNames[cuttingMaterial]}</p>
+    <p><strong>🔧 Резец:</strong> ${toolNames[cuttingTool]}</p>
+    <p><strong>⌀ Заготовки:</strong> ${dia.toFixed(1)} мм</p>
+    <p><strong>⚡ Скорость резания Vc:</strong> ${vc} м/мин</p>
+    <p><strong>🔄 Обороты n:</strong> ${rpm} об/мин</p>
+    <p><strong>➡️ Подача S:</strong> ${feed} мм/об</p>
+  `;
+  document.getElementById("resultTitle").textContent = "Результат отрезания";
+  document.getElementById("resultContent").innerHTML = html;
+  hideAllSteps();
+  document.getElementById("stepResult").style.display = "block";
+}
+
+// === ТОЧЕНИЕ ===
+function setTurningType(type) {
+  turningType = type;
+  hideAllSteps();
+  document.getElementById("stepTurningMaterial").style.display = "block";
+}
+
+function setTurningMaterial(mat) {
+  turningMaterial = mat;
+  hideAllSteps();
+  document.getElementById("stepTurningDiameters").style.display = "block";
+}
+
+function calculateTurning() {
+  const start = parseFloat(document.getElementById("turningStartDia").value);
+  const end = parseFloat(document.getElementById("turningEndDia").value);
+  const length = parseFloat(document.getElementById("turningLength").value);
+  
+  if (isNaN(start) || isNaN(end) || isNaN(length) || start <= end) {
+    return alert("Проверьте ввод: начальный Ø > конечного");
+  }
+
+  const depth = ((start - end) / 2).toFixed(2);
+  const data = TURNING_DATA[turningMaterial];
+  const vc = data.vc;
+  const feed = data.feed;
+  const rpm = Math.round((1000 * vc) / (Math.PI * start));
+
+  const materialNames = { steel: "Сталь", cast_iron: "Чугун", aluminum: "Алюминий", stainless: "Нержавейка" };
+
+  let html = `
+    <p><strong>🎯 Материал:</strong> ${materialNames[turningMaterial]}</p>
+    <p><strong>⌀ Начальный:</strong> ${start} мм</p>
+    <p><strong>⌀ Конечный:</strong> ${end} мм</p>
+    <p><strong>📏 Длина:</strong> ${length} мм</p>
+    <p><strong>🔽 Глубина резания:</strong> ${depth} мм</p>
+    <p><strong>⚡ Vc:</strong> ${vc} м/мин</p>
+    <p><strong>🔄 Обороты:</strong> ${rpm} об/мин</p>
+    <p><strong>➡️ Подача:</strong> ${feed} мм/об</p>
+  `;
+  document.getElementById("resultTitle").textContent = "Результат точения";
+  document.getElementById("resultContent").innerHTML = html;
+  hideAllSteps();
+  document.getElementById("stepResult").style.display = "block";
+}
+
+// === СВЕРЛЕНИЕ ===
+function setDrillingMaterial(mat) {
+  drillingMaterial = mat;
+  hideAllSteps();
+  document.getElementById("stepDrillingDiameter").style.display = "block";
+}
+
+function calculateDrilling() {
+  const dia = parseFloat(document.getElementById("drillDiameter").value);
+  if (isNaN(dia) || dia <= 0) return alert("Введите корректный диаметр!");
+
+  const data = DRILLING_DATA[drillingMaterial];
+  const vc = data.vc;
+  const feed = data.feed;
+  const rpm = Math.round((1000 * vc) / (Math.PI * dia));
+
+  const materialNames = { steel: "Сталь", cast_iron: "Чугун", aluminum: "Алюминий", stainless: "Нержавейка" };
+
+  let html = `
+    <p><strong>🎯 Материал:</strong> ${materialNames[drillingMaterial]}</p>
+    <p><strong>⌀ Сверла:</strong> ${dia} мм</p>
+    <p><strong>⚡ Vc:</strong> ${vc} м/мин</p>
+    <p><strong>🔄 Обороты:</strong> ${rpm} об/мин</p>
+    <p><strong>➡️ Подача:</strong> ${feed} мм/об</p>
+  `;
+  document.getElementById("resultTitle").textContent = "Результат сверления";
+  document.getElementById("resultContent").innerHTML = html;
+  hideAllSteps();
+  document.getElementById("stepResult").style.display = "block";
+}
+
+// === ФАСКИ ===
+function setChamferType(type) {
+  chamferType = type;
+  hideAllSteps();
+  document.getElementById("stepChamferDiameter").style.display = "block";
+}
+
+function calculateChamfer() {
+  const dia = parseFloat(document.getElementById("chamferDiameter").value);
+  if (isNaN(dia) || dia <= 0) return alert("Введите корректный диаметр!");
+
+  // Фаска 1×45° — стандарт
+  const offset = 1.0; // мм
+  const vc = 120; // м/мин (сталь)
+  const rpm = Math.round((1000 * vc) / (Math.PI * dia));
+
+  let angle = "45°";
+  if (chamferType === "60") angle = "60°";
+  if (chamferType === "30") angle = "30°";
+
+  let html = `
+    <p><strong>🎯 Диаметр заготовки:</strong> ${dia} мм</p>
+    <p><strong>📐 Угол фаски:</strong> ${angle}</p>
+    <p><strong>📏 Отступ по Z:</strong> ${offset} мм</p>
+    <p><strong>🔄 Обороты:</strong> ${rpm} об/мин</p>
+    <p class="info-note">ℹ️ Стандартная фаска 1×${angle}. Подача — ручная.</p>
+  `;
+  document.getElementById("resultTitle").textContent = "Результат фаски";
+  document.getElementById("resultContent").innerHTML = html;
+  hideAllSteps();
+  document.getElementById("stepResult").style.display = "block";
+}
+
+// === СБРОС ===
+function resetAll() {
+  hideAllSteps();
+  document.getElementById("stepOperation").style.display = "block";
+  document.getElementById("actualDia").value = "";
+  document.getElementById("cuttingDiameter").value = "";
+  document.getElementById("turningStartDia").value = "";
+  document.getElementById("turningEndDia").value = "";
+  document.getElementById("turningLength").value = "";
+  document.getElementById("drillDiameter").value = "";
+  document.getElementById("chamferDiameter").value = "";
+}
+
+// === НАЗАД ===
+function backToOperation() {
+  hideAllSteps();
+  document.getElementById("stepOperation").style.display = "block";
+}
+function backToThreadType() {
+  hideAllSteps();
+  document.getElementById("stepThreadType").style.display = "block";
+}
+function backToGroup() {
+  hideAllSteps();
+  document.getElementById("stepGroup").style.display = "block";
+}
+function backToDiameter() {
+  hideAllSteps();
+  document.getElementById("step1").style.display = "block";
+}
+function backToPitch() {
+  hideAllSteps();
+  document.getElementById("stepPitch").style.display = "block";
+}
+function backToDivisionOrPitch() {
+  if (threadType === "external") {
+    hideAllSteps();
+    document.getElementById("stepDiv").style.display = "block";
+  } else {
+    hideAllSteps();
+    document.getElementById("stepPitch").style.display = "block";
+  }
+}
+function backToMaterial() {
+  hideAllSteps();
+  document.getElementById("stepMaterial").style.display = "block";
+}
+function backToCuttingMaterial() {
+  hideAllSteps();
+  document.getElementById("stepCuttingMaterial").style.display = "block";
+}
+function backToCuttingTool() {
+  hideAllSteps();
+  document.getElementById("stepCuttingTool").style.display = "block";
+}
+function backToTurningType() {
+  hideAllSteps();
+  document.getElementById("stepTurningType").style.display = "block";
+}
+function backToTurningMaterial() {
+  hideAllSteps();
+  document.getElementById("stepTurningMaterial").style.display = "block";
+}
+function backToDrillingMaterial() {
+  hideAllSteps();
+  document.getElementById("stepDrillingMaterial").style.display = "block";
+}
+function backToChamferType() {
+  hideAllSteps();
+  document.getElementById("stepChamferType").style.display = "block";
+}
+
+window.onload = function() {
+  document.getElementById("stepOperation").style.display = "block";
+};
+</script>
+
+</body>
+</html>
